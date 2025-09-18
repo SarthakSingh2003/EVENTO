@@ -1,0 +1,208 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // --- Utility functions ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Check if current user has organiser role
+    function isOrganiserRole() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'organiser';
+    }
+
+    // Check if the current user is a moderator for the given event
+    function isEventModerator(eventId) {
+      return isSignedIn() &&
+        eventId != null &&
+        exists(/databases/$(database)/documents/events/$(eventId)/moderators/$(request.auth.uid));
+    }
+
+    // Calculate event capacity
+    function capacity(e) {
+      return (e.totalTickets is int && e.totalTickets > 0)
+        ? e.totalTickets
+        : (e.maxAttendees is int ? e.maxAttendees : 0);
+    }
+
+    // --- EVENTS collection ---
+    match /events/{eventId} {
+      // Anyone can read events
+      allow read: if true;
+
+      // Any signed-in user can create an event
+      allow create: if isSignedIn();
+
+      // Safe increment of soldTickets by signed-in users
+      allow update: if isSignedIn()
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['soldTickets','updatedAt'])
+        && request.resource.data.soldTickets is int
+        && request.resource.data.soldTickets >= resource.data.soldTickets
+        && request.resource.data.soldTickets <= capacity(resource.data);
+
+      // Organiser or Admin can update/delete any fields
+      allow update, delete: if isSignedIn()
+        && (request.auth.uid == resource.data.organiserId || isAdmin());
+
+      // Moderators subcollection - organiser/admin manage, moderator can read own doc
+      match /moderators/{moderatorId} {
+        // Allow organiser or admin to view the list of moderators
+        allow read: if isSignedIn() && (
+          get(/databases/$(database)/documents/events/$(eventId)).data.organiserId == request.auth.uid || isAdmin()
+        );
+
+        // Allow the moderator to read their own membership document as well
+        allow read: if isSignedIn() && moderatorId == request.auth.uid;
+
+        // Only organiser or admin can add/remove moderators
+        allow create, delete: if isSignedIn() && (
+          get(/databases/$(database)/documents/events/$(eventId)).data.organiserId == request.auth.uid || isAdmin()
+        );
+
+        // No direct updates to moderator docs from clients
+        allow update: if false;
+      }
+    }
+
+    // --- TICKETS collection ---
+    match /tickets/{ticketId} {
+      // Read: allow any signed-in user (needed for reliable QR lookups during scanning)
+      // Writes remain tightly restricted below
+      allow read: if isSignedIn();
+
+      // Create:
+      //  - ticket owner creating their own ticket (normal purchase flow), or
+      //  - event organiser creating a ticket for a user after manual payment verification
+      allow create: if isSignedIn()
+        && request.resource.data.eventId is string
+        && request.resource.data.qrCode is string
+        && request.resource.data.purchasedAt != null
+        && (
+          // Self-purchase
+          request.resource.data.userId == request.auth.uid ||
+          // Organiser issuing ticket for their event
+          (
+            exists(/databases/$(database)/documents/events/$(request.resource.data.eventId)) &&
+            get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.organiserId == request.auth.uid
+          )
+        );
+
+      // Organizer or Moderator can mark ticket as used (single purpose update)
+      allow update: if isSignedIn()
+        && resource.data.eventId != null
+        && exists(/databases/$(database)/documents/events/$(resource.data.eventId))
+        && (get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.organiserId == request.auth.uid
+            || isEventModerator(resource.data.eventId)
+            || isAdmin())
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['isUsed','usedAt']);
+
+      // Prevent other client-side destructive ops
+      allow delete: if false;
+    }
+
+    // --- PAYMENT_VERIFICATIONS collection ---
+    match /payment_verifications/{verificationId} {
+      // Owner can read their own verification
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      // Event organiser can read verifications for their event (supports eventId and legacy eventID)
+      allow read: if isSignedIn() && (
+        (
+          resource.data.eventId != null &&
+          exists(/databases/$(database)/documents/events/$(resource.data.eventId)) &&
+          get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.organiserId == request.auth.uid
+        ) || (
+          resource.data.eventID != null &&
+          exists(/databases/$(database)/documents/events/$(resource.data.eventID)) &&
+          get(/databases/$(database)/documents/events/$(resource.data.eventID)).data.organiserId == request.auth.uid
+        )
+      );
+
+      // Create: only by the user for themselves, with required fields
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.eventId is string
+        && request.resource.data.userEmail is string
+        && request.resource.data.userName is string
+        && request.resource.data.amount is number
+        && request.resource.data.screenshotUrl is string
+        && request.resource.data.status == 'pending'
+        && request.resource.data.submittedAt != null;
+
+      // Update: only organiser of the event can approve/reject and set verification metadata
+      allow update: if isSignedIn()
+        && resource.data.eventId != null
+        && exists(/databases/$(database)/documents/events/$(resource.data.eventId))
+        && get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.organiserId == request.auth.uid
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['status','verifiedBy','verifiedAt','rejectionReason']);
+
+      // Admins can do everything
+      allow read, write, update, delete: if isAdmin();
+    }
+
+    // --- USERS collection ---
+    match /users/{userId} {
+      // Users can only read/write their own profile
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+
+      // Admins can read/write all users
+      allow read, write: if isAdmin();
+    }
+
+    // --- ACCESS_APPEALS collection - FIXED RULES ---
+    match /access_appeals/{appealId} {
+      // Helper function to extract event ID from appeal ID (format: eventId_userId)
+      function getEventIdFromAppealId() {
+        return appealId.split('_')[0];
+      }
+      
+      // Helper function to check if user is organizer of the event
+      function isEventOrganizer() {
+        return exists(/databases/$(database)/documents/events/$(getEventIdFromAppealId()))
+          && get(/databases/$(database)/documents/events/$(getEventIdFromAppealId())).data.organiserId == request.auth.uid;
+      }
+
+      // Helper function to check if user is organizer of the event from resource data
+      function isEventOrganizerFromResource() {
+        return resource.data.eventId != null
+          && exists(/databases/$(database)/documents/events/$(resource.data.eventId))
+          && get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.organiserId == request.auth.uid;
+      }
+
+      // Users can create their own appeals
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid;
+
+      // Users can write their own appeals (for set operations)
+      allow write: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid;
+
+      // Users can read their own appeals
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      // Organizers can read appeals for their events (using both methods for compatibility)
+      allow read: if isSignedIn() && (isEventOrganizer() || isEventOrganizerFromResource());
+
+      // Organizers can update appeals for their events
+      allow update: if isSignedIn() 
+        && (isEventOrganizer() || isEventOrganizerFromResource())
+        // Only allow updating status and review fields
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'reviewedAt', 'reviewedBy', 'reviewerName', 'reviewNotes']);
+
+      // Users can update their own appeals (for status changes)
+      allow update: if isSignedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['status', 'reviewedAt', 'reviewedBy', 'reviewerName', 'reviewNotes']);
+
+      // Admins can do everything
+      allow read, write, update, delete: if isAdmin();
+    }
+  }
+}

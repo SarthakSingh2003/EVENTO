@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:gif_view/gif_view.dart';
 
 class AnimatedLogo extends StatelessWidget {
   final double size;
@@ -30,13 +29,12 @@ class AnimatedLogo extends StatelessWidget {
           ),
         ],
       ) : null,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(borderRadius),
-        child: GifView.asset(
-          'assets/images/plush.gif',
+      child: ClipOval(
+        child: Image.asset(
+          'lib/asssets/images/LOGO.png',
           width: size,
           height: size,
-          frameRate: 30,
+          fit: BoxFit.cover,
         ),
       ),
     );

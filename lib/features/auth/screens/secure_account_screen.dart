@@ -39,6 +39,7 @@ class _SecureAccountScreenState extends State<SecureAccountScreen> {
   String _selectedMonth = 'January';
   String _selectedYear = '2000';
   String _selectedSecurityQuestion = 'What was your first pet\'s name?';
+  String _selectedCountryCode = '+1';
   
   final List<String> _days = List.generate(31, (index) => (index + 1).toString());
   final List<String> _months = [
@@ -54,6 +55,32 @@ class _SecureAccountScreenState extends State<SecureAccountScreen> {
     'What is your favorite color?',
     'What was your childhood nickname?',
   ];
+
+  final List<Map<String, String>> _countryCodes = [
+    {'code': '+1', 'country': 'US'},
+    {'code': '+44', 'country': 'GB'},
+    {'code': '+91', 'country': 'IN'},
+    {'code': '+86', 'country': 'CN'},
+    {'code': '+81', 'country': 'JP'},
+    {'code': '+49', 'country': 'DE'},
+    {'code': '+33', 'country': 'FR'},
+    {'code': '+39', 'country': 'IT'},
+    {'code': '+34', 'country': 'ES'},
+    {'code': '+7', 'country': 'RU'},
+    {'code': '+61', 'country': 'AU'},
+    {'code': '+55', 'country': 'BR'},
+    {'code': '+52', 'country': 'MX'},
+    {'code': '+82', 'country': 'KR'},
+    {'code': '+31', 'country': 'NL'},
+  ];
+  
+  String _countryToFlag(String countryCode) {
+    final code = countryCode.toUpperCase();
+    if (code.length != 2) return '';
+    final int first = 0x1F1E6 + (code.codeUnitAt(0) - 65);
+    final int second = 0x1F1E6 + (code.codeUnitAt(1) - 65);
+    return String.fromCharCode(first) + String.fromCharCode(second);
+  }
 
   @override
   void dispose() {
@@ -71,6 +98,10 @@ class _SecureAccountScreenState extends State<SecureAccountScreen> {
 
   Future<void> _handleCreateAccount() async {
     if (!_formKey.currentState!.validate()) return;
+    if (widget.username.trim().isEmpty) {
+      Helpers.showSnackBar(context, 'Username is required to create an account', isError: true);
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -86,19 +117,23 @@ class _SecureAccountScreenState extends State<SecureAccountScreen> {
         int.parse(_selectedDay),
       );
       
-      await authService.signUpWithEmailAndPassword(
+      final success = await authService.signUpWithEmailAndPassword(
         widget.email,
         _passwordController.text,
         fullName,
         UserRole.attendee, // Default role, can be changed later
         username: widget.username,
         birthday: birthday,
-        phone: _phoneController.text.trim(),
+        phone: '$_selectedCountryCode ${_phoneController.text.trim()}',
         securityQuestion: _selectedSecurityQuestion,
         securityAnswer: _securityAnswerController.text.trim(),
       );
       
-      // Navigation will be handled by the router
+      if (success && mounted) {
+        // Manual navigation trigger
+        debugPrint('Account creation successful, navigating to home');
+        AppNavigation.goToHome(context);
+      }
     } catch (e) {
       if (mounted) {
         Helpers.showSnackBar(context, e.toString(), isError: true);
@@ -142,7 +177,7 @@ class _SecureAccountScreenState extends State<SecureAccountScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+                    'Complete your account setup with security details',
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.black87,
@@ -191,9 +226,13 @@ class _SecureAccountScreenState extends State<SecureAccountScreen> {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            Row(
+                            // Use Wrap to prevent overflow
+                            Wrap(
+                              spacing: 12,
+                              runSpacing: 12,
                               children: [
-                                Expanded(
+                                SizedBox(
+                                  width: 80,
                                   child: DropdownButtonFormField<String>(
                                     value: _selectedDay,
                                     decoration: InputDecoration(
@@ -204,14 +243,14 @@ class _SecureAccountScreenState extends State<SecureAccountScreen> {
                                         borderSide: BorderSide.none,
                                       ),
                                       contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 16,
+                                        horizontal: 8,
+                                        vertical: 12,
                                       ),
                                     ),
                                     items: _days.map((day) {
                                       return DropdownMenuItem(
                                         value: day,
-                                        child: Text(day),
+                                        child: Text(day, style: const TextStyle(fontSize: 14)),
                                       );
                                     }).toList(),
                                     onChanged: (value) {
@@ -219,8 +258,8 @@ class _SecureAccountScreenState extends State<SecureAccountScreen> {
                                     },
                                   ),
                                 ),
-                                const SizedBox(width: 12),
-                                Expanded(
+                                SizedBox(
+                                  width: 100,
                                   child: DropdownButtonFormField<String>(
                                     value: _selectedMonth,
                                     decoration: InputDecoration(
@@ -231,14 +270,14 @@ class _SecureAccountScreenState extends State<SecureAccountScreen> {
                                         borderSide: BorderSide.none,
                                       ),
                                       contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 16,
+                                        horizontal: 8,
+                                        vertical: 12,
                                       ),
                                     ),
                                     items: _months.map((month) {
                                       return DropdownMenuItem(
                                         value: month,
-                                        child: Text(month),
+                                        child: Text(month.substring(0, 3), style: const TextStyle(fontSize: 14)),
                                       );
                                     }).toList(),
                                     onChanged: (value) {
@@ -246,8 +285,8 @@ class _SecureAccountScreenState extends State<SecureAccountScreen> {
                                     },
                                   ),
                                 ),
-                                const SizedBox(width: 12),
-                                Expanded(
+                                SizedBox(
+                                  width: 80,
                                   child: DropdownButtonFormField<String>(
                                     value: _selectedYear,
                                     decoration: InputDecoration(
@@ -258,14 +297,14 @@ class _SecureAccountScreenState extends State<SecureAccountScreen> {
                                         borderSide: BorderSide.none,
                                       ),
                                       contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 16,
+                                        horizontal: 8,
+                                        vertical: 12,
                                       ),
                                     ),
                                     items: _years.map((year) {
                                       return DropdownMenuItem(
                                         value: year,
-                                        child: Text(year),
+                                        child: Text(year, style: const TextStyle(fontSize: 14)),
                                       );
                                     }).toList(),
                                     onChanged: (value) {
@@ -292,8 +331,10 @@ class _SecureAccountScreenState extends State<SecureAccountScreen> {
                             TextFormField(
                               controller: _passwordController,
                               obscureText: _obscurePassword,
+                              style: const TextStyle(color: Colors.black),
+                              cursorColor: Colors.black,
                               decoration: InputDecoration(
-                                hintText: '************',
+                                hintText: 'Create a strong password',
                                 filled: true,
                                 fillColor: AppTheme.inputBackground,
                                 border: OutlineInputBorder(
@@ -342,6 +383,7 @@ class _SecureAccountScreenState extends State<SecureAccountScreen> {
                             const SizedBox(height: 8),
                             Row(
                               children: [
+                                // Country Code Dropdown
                                 Container(
                                   width: 80,
                                   height: 50,
@@ -349,13 +391,29 @@ class _SecureAccountScreenState extends State<SecureAccountScreen> {
                                     color: AppTheme.inputBackground,
                                     borderRadius: BorderRadius.circular(12),
                                   ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(Icons.language, color: Colors.grey, size: 16),
-                                      const SizedBox(width: 4),
-                                      const Text('123', style: TextStyle(fontSize: 14)),
-                                    ],
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      value: _selectedCountryCode,
+                                      icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
+                                      items: _countryCodes.map((country) {
+                                        return DropdownMenuItem(
+                                          value: country['code'],
+                                          child: Row(
+                                            children: [
+                                              Text(_countryToFlag(country['country']!), style: const TextStyle(fontSize: 16)),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                country['code']!,
+                                                style: const TextStyle(fontSize: 14, color: Colors.black),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }).toList(),
+                                      onChanged: (value) {
+                                        setState(() => _selectedCountryCode = value!);
+                                      },
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
@@ -364,8 +422,10 @@ class _SecureAccountScreenState extends State<SecureAccountScreen> {
                                     controller: _phoneController,
                                     keyboardType: TextInputType.phone,
                                     onChanged: _checkPhoneValidity,
+                                    style: const TextStyle(color: Colors.black),
+                                    cursorColor: Colors.black,
                                     decoration: InputDecoration(
-                                      hintText: '1234 5678 9101',
+                                      hintText: 'Phone number',
                                       filled: true,
                                       fillColor: AppTheme.inputBackground,
                                       border: OutlineInputBorder(
@@ -427,7 +487,11 @@ class _SecureAccountScreenState extends State<SecureAccountScreen> {
                               items: _securityQuestions.map((question) {
                                 return DropdownMenuItem(
                                   value: question,
-                                  child: Text(question),
+                                  child: Text(
+                                    question,
+                                    style: const TextStyle(fontSize: 14),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 );
                               }).toList(),
                               onChanged: (value) {
@@ -439,8 +503,10 @@ class _SecureAccountScreenState extends State<SecureAccountScreen> {
                             
                             TextFormField(
                               controller: _securityAnswerController,
+                              style: const TextStyle(color: Colors.black),
+                              cursorColor: Colors.black,
                               decoration: InputDecoration(
-                                hintText: 'Your Answer..',
+                                hintText: 'Your answer',
                                 filled: true,
                                 fillColor: AppTheme.inputBackground,
                                 border: OutlineInputBorder(

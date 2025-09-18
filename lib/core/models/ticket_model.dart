@@ -1,4 +1,5 @@
 // import 'package:cloud_firestore/cloud_firestore.dart';  // Temporarily disabled
+import 'package:cloud_firestore/cloud_firestore.dart';  // Re-enabled for Timestamp handling
 
 class TicketModel {
   final String? id;
@@ -40,14 +41,34 @@ class TicketModel {
       price: (map['price'] ?? 0.0).toDouble(),
       isFree: map['isFree'] ?? false,
       isUsed: map['isUsed'] ?? false,
-      purchasedAt: map['purchasedAt'] is DateTime 
-          ? map['purchasedAt'] 
-          : DateTime.now(), // Temporarily simplified
-      usedAt: map['usedAt'] is DateTime 
-          ? map['usedAt'] 
-          : null,
+      purchasedAt: _parseDateTime(map['purchasedAt']),
+      usedAt: map['usedAt'] != null ? _parseDateTime(map['usedAt']) : null,
       transactionId: map['transactionId'],
     );
+  }
+
+  // Helper method to parse DateTime from various formats (Firestore Timestamp, DateTime, etc.)
+  static DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    
+    if (value is DateTime) {
+      return value;
+    }
+    
+    if (value is Timestamp) {
+      return value.toDate();
+    }
+    
+    if (value is String) {
+      try {
+        return DateTime.parse(value);
+      } catch (e) {
+        return DateTime.now();
+      }
+    }
+    
+    // Fallback to current time if parsing fails
+    return DateTime.now();
   }
 
   Map<String, dynamic> toMap() {
@@ -60,8 +81,8 @@ class TicketModel {
       'price': price,
       'isFree': isFree,
       'isUsed': isUsed,
-      'purchasedAt': purchasedAt, // Temporarily simplified
-      'usedAt': usedAt,
+      'purchasedAt': Timestamp.fromDate(purchasedAt), // Convert to Firestore Timestamp
+      'usedAt': usedAt != null ? Timestamp.fromDate(usedAt!) : null,
       'transactionId': transactionId,
     };
   }
@@ -100,7 +121,7 @@ class TicketModel {
   bool get isValid => !isUsed;
   String get formattedPrice {
     if (isFree) return 'Free';
-    return '\$${price.toStringAsFixed(2)}';
+    return '₹${price.toStringAsFixed(2)}';
   }
 
   String get formattedPurchaseDate {

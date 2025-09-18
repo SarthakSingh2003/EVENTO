@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 // import 'package:uuid/uuid.dart';  // Temporarily disabled
 import '../models/user_model.dart';
@@ -10,7 +11,7 @@ class Helpers {
 
   // Validation Helpers
   static bool isValidEmail(String email) {
-    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+    return RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(email);
   }
 
   static bool isValidPassword(String password) {
@@ -49,7 +50,7 @@ class Helpers {
   // Formatting Helpers
   static String formatCurrency(double amount) {
     return NumberFormat.currency(
-      symbol: '\$',
+      symbol: '₹',
       decimalDigits: 2,
     ).format(amount);
   }
@@ -327,5 +328,40 @@ class Helpers {
       default:
         return Colors.grey;
     }
+  }
+}
+
+// Currency Input Formatter
+class CurrencyInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    // Remove all non-digit characters
+    String newText = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
+    
+    // If empty, return empty
+    if (newText.isEmpty) {
+      return const TextEditingValue(
+        text: '',
+        selection: TextSelection.collapsed(offset: 0),
+      );
+    }
+    
+    // Convert to double and format
+    double value = double.parse(newText) / 100; // Convert paise to rupees
+    String formatted = NumberFormat('#,##0.00', 'en_IN').format(value);
+    
+    // Calculate cursor position
+    int cursorPosition = formatted.length;
+    if (newValue.selection.baseOffset < newValue.text.length) {
+      cursorPosition = newValue.selection.baseOffset;
+    }
+    
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: cursorPosition),
+    );
   }
 } 

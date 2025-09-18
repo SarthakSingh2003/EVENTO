@@ -25,6 +25,8 @@ class AuthForm extends StatelessWidget {
         children: [
           TextFormField(
             controller: _emailController,
+            style: const TextStyle(color: Colors.black),
+            cursorColor: Colors.black,
             decoration: const InputDecoration(
               labelText: 'Email',
               hintText: AppConstants.emailPlaceholder,
@@ -40,6 +42,8 @@ class AuthForm extends StatelessWidget {
           const SizedBox(height: AppConstants.defaultPadding),
           TextFormField(
             controller: _passwordController,
+            style: const TextStyle(color: Colors.black),
+            cursorColor: Colors.black,
             decoration: const InputDecoration(
               labelText: 'Password',
               hintText: AppConstants.passwordPlaceholder,

@@ -28,7 +28,7 @@ class AppConstants {
   static const String roleAttendee = 'attendee';
   
   // Payment
-  static const String currency = 'USD';
+  static const String currency = 'INR';
   static const double maxTicketPrice = 1000.0;
   static const int maxTicketsPerEvent = 10000;
   

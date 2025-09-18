@@ -1,0 +1,40 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow authenticated users to upload event banner images
+    match /event_banners/{imageId} {
+      allow read: if true;  // Anyone can view event images
+      allow write: if request.auth != null;  // Only authenticated users can upload
+    }
+    
+    // Allow authenticated users to upload profile images
+    match /users/{userId}/profile.jpg {
+      allow read: if true;  // Anyone can view profile images
+      allow write: if request.auth != null && request.auth.uid == userId;  // Only the user can upload their own profile
+    }
+    
+    // Allow authenticated users to upload event-specific images
+    match /events/{eventId}/{imageId} {
+      allow read: if true;  // Anyone can view event images
+      allow write: if request.auth != null;  // Only authenticated users can upload
+    }
+    
+    // Allow authenticated users to upload payment QR images
+    match /event_payment_qr/{imageId} {
+      allow read: if true;  // Anyone can view payment QR images
+      allow write: if request.auth != null;  // Only authenticated users can upload
+    }
+    
+    // Allow authenticated users to upload payment verification screenshots
+    match /payment_screenshots/{imageId} {
+      allow read: if true;  // Anyone can view payment screenshots
+      allow write: if request.auth != null;  // Only authenticated users can upload
+    }
+    
+    // Allow authenticated users to upload appeal documents
+    match /appeal_documents/{imageId} {
+      allow read: if true;  // Anyone can view appeal documents
+      allow write: if request.auth != null;  // Only authenticated users can upload
+    }
+  }
+}

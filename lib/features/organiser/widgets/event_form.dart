@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/models/event_model.dart';
 import '../../../core/utils/constants.dart';
+import '../../../core/utils/helpers.dart';
 
 class EventForm extends StatefulWidget {
   final EventModel? event;
@@ -188,13 +189,17 @@ class _EventFormState extends State<EventForm> {
                     ),
                     if (!_isFree)
                       TextFormField(
-                        initialValue: _price.toString(),
+                        initialValue: _price > 0 ? _price.toStringAsFixed(2) : '',
                         decoration: const InputDecoration(
-                          labelText: 'Price (\$)',
+                          labelText: 'Price (₹)',
+                          hintText: '0.00',
                         ),
                         keyboardType: TextInputType.number,
+                        inputFormatters: [CurrencyInputFormatter()],
                         onChanged: (value) {
-                          _price = double.tryParse(value) ?? 0.0;
+                          // Remove formatting and parse the value
+                          String cleanValue = value.replaceAll(RegExp(r'[^\d.]'), '');
+                          _price = double.tryParse(cleanValue) ?? 0.0;
                         },
                       ),
                   ],

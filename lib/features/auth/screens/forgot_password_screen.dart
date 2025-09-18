@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../routes/app_router.dart';
+import 'package:provider/provider.dart';
+import '../../../core/services/auth_service.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -26,8 +28,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // TODO: Implement password reset functionality
-      await Future.delayed(const Duration(seconds: 2)); // Simulate API call
+      final auth = context.read<AuthService>();
+      await auth.sendPasswordResetEmail(_emailController.text.trim());
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -158,6 +160,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             const SizedBox(height: 8),
                             TextFormField(
                               controller: _emailController,
+                              style: const TextStyle(color: Colors.black),
+                              cursorColor: Colors.black,
                               keyboardType: TextInputType.emailAddress,
                               decoration: InputDecoration(
                                 hintText: 'Your Email Address',

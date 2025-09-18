@@ -1,112 +1,83 @@
 import 'dart:io';
-// import 'package:firebase_storage/firebase_storage.dart';  // Temporarily disabled
-// import 'package:image_picker/image_picker.dart';  // Temporarily disabled
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
 
 class StorageService {
-  // final FirebaseStorage _storage = FirebaseStorage.instance;  // Temporarily disabled
-  // final ImagePicker _picker = ImagePicker();  // Temporarily disabled
+  final FirebaseStorage _storage = FirebaseStorage.instance;
+  final ImagePicker _picker = ImagePicker();
 
   // Upload event banner
   Future<String> uploadEventBanner(String eventId, File imageFile) async {
-    // Temporarily disabled Firebase operations
-    // try {
-    //   final ref = _storage.ref().child('events/$eventId/banner.jpg');
-    //   final uploadTask = ref.putFile(imageFile);
-    //   final snapshot = await uploadTask;
-    //   return await snapshot.ref.getDownloadURL();
-    // } catch (e) {
-    //   throw Exception('Failed to upload event banner: $e');
-    // }
-    
-    // Mock implementation
-    await Future.delayed(Duration(milliseconds: 1000)); // Simulate upload delay
-    return 'https://mock-storage-url.com/events/$eventId/banner.jpg';
+    try {
+      final ref = _storage.ref().child('events/$eventId/banner.jpg');
+      final uploadTask = ref.putFile(imageFile);
+      final snapshot = await uploadTask;
+      return await snapshot.ref.getDownloadURL();
+    } catch (e) {
+      throw Exception('Failed to upload event banner: $e');
+    }
   }
 
   // Upload profile image
   Future<String> uploadProfileImage(String userId, File imageFile) async {
-    // Temporarily disabled Firebase operations
-    // try {
-    //   final ref = _storage.ref().child('users/$userId/profile.jpg');
-    //   final uploadTask = ref.putFile(imageFile);
-    //   final snapshot = await uploadTask;
-    //   return await snapshot.ref.getDownloadURL();
-    // } catch (e) {
-    //   throw Exception('Failed to upload profile image: $e');
-    // }
-    
-    // Mock implementation
-    await Future.delayed(Duration(milliseconds: 1000)); // Simulate upload delay
-    return 'https://mock-storage-url.com/users/$userId/profile.jpg';
+    try {
+      final ref = _storage.ref().child('users/$userId/profile.jpg');
+      final uploadTask = ref.putFile(imageFile);
+      final snapshot = await uploadTask;
+      return await snapshot.ref.getDownloadURL();
+    } catch (e) {
+      throw Exception('Failed to upload profile image: $e');
+    }
   }
 
   // Pick image from gallery
   Future<File?> pickImageFromGallery() async {
-    // Temporarily disabled image picker
-    // try {
-    //   final XFile? image = await _picker.pickImage(
-    //     source: ImageSource.gallery,
-    //     maxWidth: 1024,
-    //     maxHeight: 1024,
-    //     imageQuality: 80,
-    //   );
-    //   return image != null ? File(image.path) : null;
-    // } catch (e) {
-    //   throw Exception('Failed to pick image from gallery: $e');
-    // }
-    
-    // Mock implementation
-    await Future.delayed(Duration(milliseconds: 500));
-    return null; // Return null for mock implementation
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 80,
+      );
+      return image != null ? File(image.path) : null;
+    } catch (e) {
+      throw Exception('Failed to pick image from gallery: $e');
+    }
   }
 
   // Take photo with camera
   Future<File?> takePhotoWithCamera() async {
-    // Temporarily disabled image picker
-    // try {
-    //   final XFile? image = await _picker.pickImage(
-    //     source: ImageSource.camera,
-    //     maxWidth: 1024,
-    //     maxHeight: 1024,
-    //     imageQuality: 80,
-    //   );
-    //   return image != null ? File(image.path) : null;
-    // } catch (e) {
-    //   throw Exception('Failed to take photo: $e');
-    // }
-    
-    // Mock implementation
-    await Future.delayed(Duration(milliseconds: 500));
-    return null; // Return null for mock implementation
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 80,
+      );
+      return image != null ? File(image.path) : null;
+    } catch (e) {
+      throw Exception('Failed to take photo: $e');
+    }
   }
 
   // Delete file from storage
   Future<void> deleteFile(String fileUrl) async {
-    // Temporarily disabled Firebase operations
-    // try {
-    //   final ref = _storage.refFromURL(fileUrl);
-    //   await ref.delete();
-    // } catch (e) {
-    //   throw Exception('Failed to delete file: $e');
-    // }
-    
-    // Mock implementation
-    await Future.delayed(Duration(milliseconds: 300));
+    try {
+      final ref = _storage.refFromURL(fileUrl);
+      await ref.delete();
+    } catch (e) {
+      throw Exception('Failed to delete file: $e');
+    }
   }
 
   // Get file size
   Future<int> getFileSize(String fileUrl) async {
-    // Temporarily disabled Firebase operations
-    // try {
-    //   final ref = _storage.refFromURL(fileUrl);
-    //   final metadata = await ref.getMetadata();
-    //   return metadata.size ?? 0;
-    // } catch (e) {
-    //   throw Exception('Failed to get file size: $e');
-    // }
-    
-    // Mock implementation
-    await Future.delayed(Duration(milliseconds: 300));
-    return 1024 * 1024; // Return 1MB as mock file size
+    try {
+      final ref = _storage.refFromURL(fileUrl);
+      final metadata = await ref.getMetadata();
+      return metadata.size ?? 0;
+    } catch (e) {
+      throw Exception('Failed to get file size: $e');
+    }
   }
 } 

@@ -2,16 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../core/services/auth_service.dart';
 import '../core/models/user_model.dart';
-import '../features/auth/screens/login_screen.dart';
+import '../features/auth/screens/dynamic_login_screen.dart';
 import '../features/auth/screens/signup_screen.dart';
-import '../features/organiser/screens/organiser_dashboard_screen.dart';
+import '../core/widgets/splash_screen.dart';
 import '../features/organiser/screens/create_event_screen.dart';
 import '../features/organiser/screens/manage_event_screen.dart';
-import '../features/organiser/screens/view_past_events_screen.dart';
+import '../features/organiser/screens/edit_event_screen.dart';
+import '../features/organiser/screens/event_analytics_screen.dart';
+import '../features/organiser/screens/scan_tickets_screen.dart';
+import '../features/organiser/screens/ticket_management_screen.dart';
+import '../features/organiser/screens/event_appeals_screen.dart';
+import '../features/organiser/screens/view_appeals_screen.dart';
 import '../features/moderator/screens/qr_scanner_screen.dart';
 import '../features/attendee/screens/event_list_screen.dart';
 import '../features/attendee/screens/event_detail_screen.dart';
 import '../features/attendee/screens/my_tickets_screen.dart';
+import '../features/attendee/screens/qr_payment_screen.dart';
+import '../features/attendee/screens/payment_verification_screen.dart';
+import '../features/attendee/screens/payment_verification_status_screen.dart';
+import '../features/organiser/screens/payment_verification_screen.dart' as organizer_payment;
 import '../features/common/screens/profile_screen.dart';
 
 class AppRouter {
@@ -20,14 +29,21 @@ class AppRouter {
   AppRouter({required this.authService});
 
   GoRouter get router => GoRouter(
-    initialLocation: '/',
+    initialLocation: '/splash',
     redirect: _handleRedirect,
+    refreshListenable: authService, // Listen to auth service changes
     routes: [
+      // Splash Screen
+      GoRoute(
+        path: '/splash',
+        name: 'splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
       // Auth Routes
       GoRoute(
         path: '/login',
         name: 'login',
-        builder: (context, state) => const LoginScreen(),
+        builder: (context, state) => const DynamicLoginScreen(),
       ),
       GoRoute(
         path: '/signup',
@@ -35,31 +51,79 @@ class AppRouter {
         builder: (context, state) => const SignupScreen(),
       ),
 
-      // Organiser Routes
+      // Create Event Route (Direct access)
       GoRoute(
-        path: '/organiser',
-        name: 'organiser_dashboard',
-        builder: (context, state) => const OrganiserDashboardScreen(),
-        routes: [
-          GoRoute(
-            path: 'create-event',
-            name: 'create_event',
-            builder: (context, state) => const CreateEventScreen(),
-          ),
-          GoRoute(
-            path: 'manage-event/:eventId',
-            name: 'manage_event',
-            builder: (context, state) {
-              final eventId = state.pathParameters['eventId'] ?? '';
-              return ManageEventScreen(eventId: eventId);
-            },
-          ),
-          GoRoute(
-            path: 'past-events',
-            name: 'past_events',
-            builder: (context, state) => const ViewPastEventsScreen(),
-          ),
-        ],
+        path: '/create-event',
+        name: 'create_event',
+        builder: (context, state) => const CreateEventScreen(),
+      ),
+
+      // Manage Event Route
+      GoRoute(
+        path: '/manage-event/:eventId',
+        name: 'manage_event',
+        builder: (context, state) => ManageEventScreen(
+          eventId: state.pathParameters['eventId']!,
+        ),
+      ),
+
+      // Edit Event Route
+      GoRoute(
+        path: '/edit-event/:eventId',
+        name: 'edit_event',
+        builder: (context, state) => EditEventScreen(
+          eventId: state.pathParameters['eventId']!,
+        ),
+      ),
+
+      // Event Analytics Route
+      GoRoute(
+        path: '/event-analytics/:eventId',
+        name: 'event_analytics',
+        builder: (context, state) => EventAnalyticsScreen(
+          eventId: state.pathParameters['eventId']!,
+        ),
+      ),
+
+      // Scan Tickets Route
+      GoRoute(
+        path: '/scan-tickets/:eventId',
+        name: 'scan_tickets',
+        builder: (context, state) => ScanTicketsScreen(
+          eventId: state.pathParameters['eventId']!,
+        ),
+      ),
+
+      // Ticket Management Route
+      GoRoute(
+        path: '/ticket-management/:eventId',
+        name: 'ticket_management',
+        builder: (context, state) => TicketManagementScreen(
+          eventId: state.pathParameters['eventId']!,
+        ),
+      ),
+
+      // Event Appeals Route
+      GoRoute(
+        path: '/event-appeals/:eventId',
+        name: 'event_appeals',
+        builder: (context, state) => EventAppealsScreen(
+          eventId: state.pathParameters['eventId']!,
+        ),
+      ),
+
+      // View Appeals Route (detailed view)
+      GoRoute(
+        path: '/view-appeals/:eventId',
+        name: 'view_appeals',
+        builder: (context, state) {
+          final eventId = state.pathParameters['eventId']!;
+          final eventTitle = state.uri.queryParameters['title'] ?? 'Event';
+          return ViewAppealsScreen(
+            eventId: eventId,
+            eventTitle: eventTitle,
+          );
+        },
       ),
 
       // Moderator Routes
@@ -88,7 +152,56 @@ class AppRouter {
             name: 'my_tickets',
             builder: (context, state) => const MyTicketsScreen(),
           ),
+          GoRoute(
+            path: 'qr-payment',
+            name: 'qr_payment',
+            builder: (context, state) {
+              final args = state.extra as Map<String, dynamic>?;
+              return QRPaymentScreen(
+                event: args?['event'],
+                amount: args?['amount'] ?? 0.0,
+                userEmail: args?['userEmail'] ?? '',
+                userName: args?['userName'] ?? '',
+              );
+            },
+          ),
+          GoRoute(
+            path: 'payment-verification',
+            name: 'payment_verification',
+            builder: (context, state) {
+              final args = state.extra as Map<String, dynamic>?;
+              return PaymentVerificationScreen(
+                event: args?['event'],
+                amount: args?['amount'] ?? 0.0,
+                userEmail: args?['userEmail'] ?? '',
+                userName: args?['userName'] ?? '',
+              );
+            },
+          ),
+          GoRoute(
+            path: 'payment-verification-status',
+            name: 'payment_verification_status',
+            builder: (context, state) {
+              final eventId = state.uri.queryParameters['eventId'] ?? '';
+              final title = state.uri.queryParameters['title'] ?? 'Event';
+              return PaymentVerificationStatusScreen(eventId: eventId, eventTitle: title);
+            },
+          ),
         ],
+      ),
+
+      // Organizer Payment Verification Route
+      GoRoute(
+        path: '/organizer-payment-verification/:eventId',
+        name: 'organizer_payment_verification',
+        builder: (context, state) {
+          final eventId = state.pathParameters['eventId']!;
+          final eventTitle = state.uri.queryParameters['title'] ?? 'Event';
+          return organizer_payment.OrganizerPaymentVerificationScreen(
+            eventId: eventId,
+            eventTitle: eventTitle,
+          );
+        },
       ),
 
       // Common Routes
@@ -106,58 +219,30 @@ class AppRouter {
     final userRole = authService.userRole;
     final currentPath = state.fullPath;
 
-    // If not authenticated, redirect to login
+    // Debug logging
+    debugPrint('Router Redirect - Auth: $isAuthenticated, Role: $userRole, Path: $currentPath');
+
+    // If not authenticated, redirect to login (but allow splash screen)
     if (!isAuthenticated) {
-      if (currentPath != '/login' && currentPath != '/signup') {
+      if (currentPath != '/login' && currentPath != '/signup' && currentPath != '/splash') {
+        debugPrint('Redirecting to login - not authenticated');
         return '/login';
       }
       return null;
     }
 
-    // If authenticated, handle role-based routing
-    if (isAuthenticated && userRole != null) {
-      // If on auth pages, redirect to appropriate dashboard
+    // If authenticated, redirect to home if on auth pages
+    if (isAuthenticated) {
       if (currentPath == '/login' || currentPath == '/signup') {
-        return _getDashboardPath(userRole);
-      }
-
-      // Check if user has access to current route
-      if (userRole != null && currentPath != null && !_hasAccessToRoute(userRole, currentPath!)) {
-        return _getDashboardPath(userRole);
+        debugPrint('User is authenticated, redirecting to home');
+        return '/';
       }
     }
 
     return null;
   }
 
-  String _getDashboardPath(UserRole role) {
-    switch (role) {
-      case UserRole.organiser:
-        return '/organiser';
-      case UserRole.moderator:
-        return '/moderator';
-      case UserRole.attendee:
-        return '/';
-    }
-  }
 
-  bool _hasAccessToRoute(UserRole role, String path) {
-    switch (role) {
-      case UserRole.organiser:
-        return path.startsWith('/organiser') || 
-               path == '/profile' || 
-               path == '/';
-      case UserRole.moderator:
-        return path.startsWith('/moderator') || 
-               path == '/profile' || 
-               path == '/';
-      case UserRole.attendee:
-        return path.startsWith('/') && 
-               !path.startsWith('/organiser') && 
-               !path.startsWith('/moderator') || 
-               path == '/profile';
-    }
-  }
 
   Widget _buildErrorScreen(BuildContext context, GoRouterState state) {
     return Scaffold(
@@ -222,20 +307,12 @@ class AppNavigation {
     context.go('/my-tickets');
   }
 
-  static void goToOrganiserDashboard(BuildContext context) {
-    context.go('/organiser');
-  }
-
   static void goToCreateEvent(BuildContext context) {
-    context.go('/organiser/create-event');
+    context.go('/create-event');
   }
 
   static void goToManageEvent(BuildContext context, String eventId) {
-    context.go('/organiser/manage-event/$eventId');
-  }
-
-  static void goToPastEvents(BuildContext context) {
-    context.go('/organiser/past-events');
+    context.go('/manage-event/$eventId');
   }
 
   static void goToModeratorScanner(BuildContext context) {
